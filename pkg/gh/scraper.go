@@ -130,6 +130,34 @@ func (s *Scraper) GetUser(username string) (*github.User, error) {
 		user.Name = github.String(strings.TrimSpace(matchName[1]))
 	}
 
+	// Extract Bio
+	reBio := regexp.MustCompile(`<div class="p-note user-profile-bio mb-3 js-user-profile-bio f4" .*?>\s*<div>(.*?)</div>`)
+	matchBio := reBio.FindStringSubmatch(html)
+	if len(matchBio) > 1 {
+		user.Bio = github.String(strings.TrimSpace(matchBio[1]))
+	}
+
+	// Extract Location
+	reLoc := regexp.MustCompile(`<span class="p-label">(.*?)</span>`)
+	matchLoc := reLoc.FindStringSubmatch(html)
+	if len(matchLoc) > 1 {
+		user.Location = github.String(strings.TrimSpace(matchLoc[1]))
+	}
+
+	// Extract Followers
+	reFollowers := regexp.MustCompile(`href=".*?tab=followers".*?><span class="text-bold color-fg-default">(.*?)</span>`)
+	matchFollowers := reFollowers.FindStringSubmatch(html)
+	if len(matchFollowers) > 1 {
+		user.Followers = github.Int(parseGitHubCount(matchFollowers[1]))
+	}
+
+	// Extract Following
+	reFollowing := regexp.MustCompile(`href=".*?tab=following".*?><span class="text-bold color-fg-default">(.*?)</span>`)
+	matchFollowing := reFollowing.FindStringSubmatch(html)
+	if len(matchFollowing) > 1 {
+		user.Following = github.Int(parseGitHubCount(matchFollowing[1]))
+	}
+
 	user.HTMLURL = github.String(url)
 
 	return user, nil

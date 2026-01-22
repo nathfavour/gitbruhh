@@ -15,7 +15,7 @@ var userCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		username := args[0]
-		client := gh.NewClient()
+		client := gh.NewClient(gh.ProviderType(provider))
 		user, err := client.GetUser(username)
 		if err != nil {
 			fmt.Printf("Error fetching user %s: %v\n", username, err)

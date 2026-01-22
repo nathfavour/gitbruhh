@@ -58,6 +58,39 @@ func (s *Scraper) GetRepo(fullName string) (*github.Repository, error) {
 		repo.StargazersCount = github.Int(stars)
 	}
 
+	// Extract forks
+	reForks := regexp.MustCompile(`id="repo-network-counter" .*?>(.*?)</span>`)
+	matchForks := reForks.FindStringSubmatch(html)
+	if len(matchForks) > 1 {
+		repo.ForksCount = github.Int(parseGitHubCount(matchForks[1]))
+	}
+
+	// Extract issues count
+	reIssues := regexp.MustCompile(`id="issues-repo-tab" .*?><span .*?>Issues</span><span .*?>(.*?)</span>`)
+	matchIssues := reIssues.FindStringSubmatch(html)
+	if len(matchIssues) > 1 {
+		repo.OpenIssuesCount = github.Int(parseGitHubCount(matchIssues[1]))
+	}
+
+	// Extract language
+	reLang := regexp.MustCompile(`itemprop="programmingLanguage">(.*?)</span>`)
+	matchLang := reLang.FindStringSubmatch(html)
+	if len(matchLang) > 1 {
+		repo.Language = github.String(strings.TrimSpace(matchLang[1]))
+	}
+
+	// Extract license
+	reLicense := regexp.MustCompile(`itemprop="license">(.*?)</a>`)
+	if matchLicense := reLicense.FindStringSubmatch(html); len(matchLicense) > 1 {
+		repo.License = &github.License{Name: github.String(strings.TrimSpace(matchLicense[1]))}
+	} else {
+		// Try alternative license pattern
+		reLicenseAlt := regexp.MustCompile(`<svg .*? octicon-law .*?>.*?</svg>\s*(.*?)\s*</a>`)
+		if matchLicenseAlt := reLicenseAlt.FindStringSubmatch(html); len(matchLicenseAlt) > 1 {
+			repo.License = &github.License{Name: github.String(strings.TrimSpace(matchLicenseAlt[1]))}
+		}
+	}
+
 	repo.HTMLURL = github.String(url)
 
 	return repo, nil
@@ -103,7 +136,57 @@ func (s *Scraper) GetUser(username string) (*github.User, error) {
 }
 
 func (s *Scraper) SearchRepos(query string) ([]*github.Repository, error) {
-	return nil, fmt.Errorf("scraping search not implemented yet")
+	url := fmt.Sprintf("https://github.com/search?q=%s&type=repositories", strings.ReplaceAll(query, " ", "+"))
+	req, _ := http.NewRequest("GET", url, nil)
+	// Add user agent to look like a browser
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36")
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch search results: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	html := string(body)
+	var repos []*github.Repository
+
+	// Search results on GitHub web are a bit complex to parse with regex
+	// But we can try to find repo names which are usually in <a> tags with data-hydro-click
+	reRepo := regexp.MustCompile(`href="/([a-zA-Z0-9-._]+/[a-zA-Z0-9-._]+)" data-hydro-click`)
+	matches := reRepo.FindAllStringSubmatch(html, 10)
+
+	for _, match := range matches {
+		fullName := match[1]
+		repos = append(repos, &github.Repository{
+			FullName: github.String(fullName),
+			HTMLURL:  github.String("https://github.com/" + fullName),
+		})
+	}
+
+	if len(repos) == 0 {
+		// Fallback regex for search results
+		reRepoAlt := regexp.MustCompile(`"repository":\{"id":\d+,"name":"(.*?)","owner":\{"login":"(.*?)"\}`)
+		matchesAlt := reRepoAlt.FindAllStringSubmatch(html, 10)
+		for _, match := range matchesAlt {
+			fullName := match[2] + "/" + match[1]
+			repos = append(repos, &github.Repository{
+				FullName: github.String(fullName),
+				HTMLURL:  github.String("https://github.com/" + fullName),
+			})
+		}
+	}
+
+	return repos, nil
 }
 
 func parseGitHubCount(s string) int {

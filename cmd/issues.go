@@ -15,7 +15,7 @@ var issuesCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath := args[0]
-		client := gh.NewClient()
+		client := gh.NewClient(gh.ProviderType(provider))
 		issues, err := client.GetIssues(repoPath)
 		if err != nil {
 			fmt.Printf("Error fetching issues for %s: %v\n", repoPath, err)

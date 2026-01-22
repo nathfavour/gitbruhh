@@ -15,7 +15,7 @@ var repoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath := args[0]
-		client := gh.NewClient()
+		client := gh.NewClient(gh.ProviderType(provider))
 		repo, err := client.GetRepo(repoPath)
 		if err != nil {
 			fmt.Printf("Error fetching repository %s: %v\n", repoPath, err)

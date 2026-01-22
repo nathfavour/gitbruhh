@@ -6,9 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var provider string
+
 var rootCmd = &cobra.Command{
-	Use:   "gitbruhh",
-	Short: "gitbruhh is a robust CLI for GitHub",
+	Use:   "xoy",
+	Short: "xoy is a robust CLI for GitHub",
 	Long:  `A modular and intelligent CLI tool to fetch information from GitHub without leaving your terminal.`,
 }
 
@@ -21,5 +23,5 @@ func Execute() {
 }
 
 func init() {
-	// Root flags can be defined here
+	rootCmd.PersistentFlags().StringVarP(&provider, "provider", "p", "auto", "Provider to use (auto, api, scraper)")
 }

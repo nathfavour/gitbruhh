@@ -18,7 +18,7 @@ var searchCmd = &cobra.Command{
 		for _, arg := range args {
 			query += arg + " "
 		}
-		client := gh.NewClient()
+		client := gh.NewClient(gh.ProviderType(provider))
 		repos, err := client.SearchRepos(query)
 		if err != nil {
 			fmt.Printf("Error searching for %s: %v\n", query, err)

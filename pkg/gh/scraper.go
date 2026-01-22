@@ -2,8 +2,6 @@ package gh
 
 import (
 	"fmt"
-	"net/http"
-	"io"
 	"strings"
 	"regexp"
 	"strconv"
@@ -12,30 +10,28 @@ import (
 )
 
 // Scraper implements the Provider interface by scraping GitHub web pages.
-type Scraper struct{}
+type Scraper struct {
+	fetcher Fetcher
+}
 
 func NewScraper() *Scraper {
-	return &Scraper{}
+	return &Scraper{
+		fetcher: &MultiFetcher{
+			fetchers: []Fetcher{
+				&HttpFetcher{},
+				&CURLFetcher{},
+			},
+		},
+	}
 }
 
 func (s *Scraper) GetRepo(fullName string) (*github.Repository, error) {
 	url := fmt.Sprintf("https://github.com/%s", fullName)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch page: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	html, err := s.fetcher.Fetch(url)
 	if err != nil {
 		return nil, err
 	}
 
-	html := string(body)
 	repo := &github.Repository{
 		FullName: github.String(fullName),
 	}
@@ -103,22 +99,11 @@ func (s *Scraper) GetIssues(fullName string) ([]*github.Issue, error) {
 
 func (s *Scraper) GetUser(username string) (*github.User, error) {
 	url := fmt.Sprintf("https://github.com/%s", username)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch page: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	html, err := s.fetcher.Fetch(url)
 	if err != nil {
 		return nil, err
 	}
 
-	html := string(body)
 	user := &github.User{
 		Login: github.String(username),
 	}
@@ -165,27 +150,11 @@ func (s *Scraper) GetUser(username string) (*github.User, error) {
 
 func (s *Scraper) SearchRepos(query string) ([]*github.Repository, error) {
 	url := fmt.Sprintf("https://github.com/search?q=%s&type=repositories", strings.ReplaceAll(query, " ", "+"))
-	req, _ := http.NewRequest("GET", url, nil)
-	// Add user agent to look like a browser
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36")
-	
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch search results: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	html, err := s.fetcher.Fetch(url)
 	if err != nil {
 		return nil, err
 	}
 
-	html := string(body)
 	var repos []*github.Repository
 
 	// Search results on GitHub web are a bit complex to parse with regex

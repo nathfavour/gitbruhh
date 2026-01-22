@@ -57,3 +57,22 @@ func PrintRepos(repos []*github.Repository) {
 	w.Flush()
 }
 
+// PrintIssues displays a list of issues in a clean table format.
+func PrintIssues(issues []*github.Issue) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NUMBER\tTITLE\tUSER\tURL")
+	for _, issue := range issues {
+		title := issue.GetTitle()
+		if len(title) > 50 {
+			title = title[:47] + "..."
+		}
+		fmt.Fprintf(w, "#%d\t%s\t%s\t%s\n",
+			issue.GetNumber(),
+			title,
+			issue.GetUser().GetLogin(),
+			issue.GetHTMLURL(),
+		)
+	}
+	w.Flush()
+}
+

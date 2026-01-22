@@ -19,7 +19,6 @@ func NewClient() *Client {
 	ctx := context.Background()
 	token := os.Getenv("GITHUB_TOKEN")
 
-	var httpClient *oauth2.TokenSource
 	if token != "" {
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},

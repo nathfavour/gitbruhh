@@ -38,3 +38,22 @@ func PrintRepo(repo *github.Repository) {
 	w.Flush()
 }
 
+// PrintRepos displays a list of repositories in a clean table format.
+func PrintRepos(repos []*github.Repository) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tSTARS\tLANGUAGE\tDESCRIPTION")
+	for _, repo := range repos {
+		desc := repo.GetDescription()
+		if len(desc) > 50 {
+			desc = desc[:47] + "..."
+		}
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n",
+			repo.GetFullName(),
+			repo.GetStargazersCount(),
+			repo.GetLanguage(),
+			desc,
+		)
+	}
+	w.Flush()
+}
+

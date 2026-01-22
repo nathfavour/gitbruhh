@@ -11,6 +11,7 @@ import (
 // Client wraps the GitHub client and provides utility methods.
 type Client struct {
 	*github.Client
+	scraper *Scraper
 }
 
 // NewClient initializes a new GitHub client.
@@ -19,14 +20,20 @@ func NewClient() *Client {
 	ctx := context.Background()
 	token := os.Getenv("GITHUB_TOKEN")
 
+	var ghClient *github.Client
 	if token != "" {
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)
 		tc := oauth2.NewClient(ctx, ts)
-		return &Client{github.NewClient(tc)}
+		ghClient = github.NewClient(tc)
+	} else {
+		// Unauthenticated client
+		ghClient = github.NewClient(nil)
 	}
 
-	// Unauthenticated client
-	return &Client{github.NewClient(nil)}
+	return &Client{
+		Client:  ghClient,
+		scraper: NewScraper(),
+	}
 }

@@ -16,6 +16,13 @@ func (c *Client) GetRepo(fullName string) (*github.Repository, error) {
 		return nil, errors.New("invalid repo format; use 'owner/repo'")
 	}
 	repo, _, err := c.Repositories.Get(ctx, parts[0], parts[1])
+	if err != nil {
+		// Fallback to scraper if API fails (e.g., rate limit)
+		if scrapedRepo, sErr := c.scraper.GetRepo(fullName); sErr == nil {
+			return scrapedRepo, nil
+		}
+		return nil, err
+	}
 	return repo, err
 }
 
@@ -31,5 +38,12 @@ func (c *Client) GetIssues(fullName string) ([]*github.Issue, error) {
 		ListOptions: github.ListOptions{PerPage: 10},
 	}
 	issues, _, err := c.Issues.ListByRepo(ctx, parts[0], parts[1], opts)
+	if err != nil {
+		// Fallback to scraper if API fails
+		if scrapedIssues, sErr := c.scraper.GetIssues(fullName); sErr == nil {
+			return scrapedIssues, nil
+		}
+		return nil, err
+	}
 	return issues, err
 }

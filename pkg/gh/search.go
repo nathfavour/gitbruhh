@@ -14,6 +14,10 @@ func (c *Client) SearchRepos(query string) ([]*github.Repository, error) {
 	}
 	result, _, err := c.Search.Repositories(ctx, query, opts)
 	if err != nil {
+		// Fallback to scraper
+		if scrapedRepos, sErr := c.scraper.SearchRepos(query); sErr == nil {
+			return scrapedRepos, nil
+		}
 		return nil, err
 	}
 	return result.Repositories, nil
